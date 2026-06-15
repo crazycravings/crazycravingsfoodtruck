@@ -389,28 +389,29 @@ tbody td{padding:7px 10px;vertical-align:middle}
 </div>
 </div>
 <script>
-// Set logos + check local session
-(function(){
-  if(typeof LOGO_IMG!=='undefined'){
-    document.getElementById('ll').src=LOGO_IMG;
-    document.getElementById('hl').src=LOGO_IMG;
-  }
-  // If locally authenticated (no Firebase), restore session
-  try{
-    if(sessionStorage.getItem('cc_local')==='1'){showApp();}
-  }catch(ex){}
-})();
-
 function showApp(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='block';
   if(typeof initApp==='function')initApp();
 }
+
+// Set logos + check local session
+(function(){
+  if(typeof LOGO_IMG!=='undefined'){
+    var ll=document.getElementById('ll');
+    var hl=document.getElementById('hl');
+    if(ll)ll.src=LOGO_IMG;
+    if(hl)hl.src=LOGO_IMG;
+  }
+  try{
+    if(sessionStorage.getItem('cc_local')==='1'){showApp();}
+  }catch(ex){}
+})();
 window.doLogin=function(){
   var email=document.getElementById('login-email').value.trim();
   var pwd=document.getElementById('login-pwd').value;
-  if(!email||!pwd){
-    var e=document.getElementById('login-err');e.style.display='block';e.textContent='Please enter email and password.';
+  if(!pwd){
+    var e=document.getElementById('login-err');e.style.display='block';e.textContent='Please enter your password.';
     setTimeout(function(){e.style.display='none';},3000);return;
   }
   document.getElementById('login-btn').textContent='Signing in...';
