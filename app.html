@@ -6,6 +6,60 @@
 <title>Crazy Cravings</title>
 <script src="data.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// ── Firebase loader (non-blocking) ──────────────────────────────
+(function(){
+  var cfg={
+    apiKey:"AIzaSyDt4UHOAg_V4TAB56qOTOHhEkhLnwXyC3g",
+    authDomain:"crazy-cravings-data.firebaseapp.com",
+    projectId:"crazy-cravings-data",
+    storageBucket:"crazy-cravings-data.firebasestorage.app",
+    messagingSenderId:"445386914627",
+    appId:"1:445386914627:web:7800ce0e67bcac3b1a8df6"
+  };
+  function loadFB(){
+    try{
+      var app=firebase.initializeApp(cfg);
+      var db=firebase.firestore();
+      var auth=firebase.auth();
+      window._fb={
+        save:function(col,id,data){return db.collection(col).doc(id).set(data).catch(function(){});},
+        load:function(col){return db.collection(col).get().then(function(s){return s.docs.map(function(d){return d.data();})}).catch(function(){return null;});},
+        del:function(col,id){return db.collection(col).doc(id).delete().catch(function(){});},
+        login:function(email,pwd){return auth.signInWithEmailAndPassword(email,pwd).then(function(){return true;}).catch(function(){return false;});},
+        logout:function(){return auth.signOut();},
+        onAuth:function(cb){auth.onAuthStateChanged(cb);}
+      };
+      window._fb.onAuth(function(user){
+        if(user){showApp();}
+        else{
+          document.getElementById('login').style.display='flex';
+          document.getElementById('app').style.display='none';
+        }
+      });
+      window._fbReady=true;
+    }catch(e){window._fbReady=false;}
+  }
+  // Load Firebase compat SDK
+  var s1=document.createElement('script');
+  s1.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+  s1.onload=function(){
+    var s2=document.createElement('script');
+    s2.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js';
+    s2.onload=function(){
+      var s3=document.createElement('script');
+      s3.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js';
+      s3.onload=loadFB;
+      s3.onerror=function(){window._fbReady=false;};
+      document.head.appendChild(s3);
+    };
+    s2.onerror=function(){window._fbReady=false;};
+    document.head.appendChild(s2);
+  };
+  s1.onerror=function(){window._fbReady=false;};
+  document.head.appendChild(s1);
+})();
+</script>
 <style>
 :root{--red:#C0153A;--bd:#e0e0e0;--bg:#f0f2f5;--txt:#222;--mut:#777}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -87,9 +141,10 @@ tbody td{padding:7px 10px;vertical-align:middle}
     <img id="ll" src="" alt="Crazy Cravings Logo">
     <h2>Crazy Cravings</h2>
     <p>Invoice &amp; Cash Book &mdash; Restricted Access</p>
-    <input type="password" id="login-pwd" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button id="login-btn" onclick="doLogin()">Sign In</button>
-    <div id="login-err">Incorrect password. Please try again.</div>
+    <input type="email" id="login-email" placeholder="Email" style="width:100%;padding:10px;border:1.5px solid var(--bd);border-radius:8px;font-size:14px;margin-bottom:8px;text-align:center">
+    <input type="password" id="login-pwd" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:10px;border:1.5px solid var(--bd);border-radius:8px;font-size:14px;margin-bottom:10px;text-align:center">
+    <button id="login-btn" onclick="doLogin()" style="width:100%;padding:12px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Sign In</button>
+    <div id="login-err" style="color:var(--red);font-size:12px;margin-top:6px;display:none">Incorrect email or password.</div>
   </div>
 </div>
 <div id="app" style="display:none">
@@ -107,12 +162,14 @@ tbody td{padding:7px 10px;vertical-align:middle}
   <img id="hl" src="" alt="CC" style="height:46px;border-radius:6px">
   <div><h1>Crazy Cravings</h1><span>Invoice &amp; Quote Generator | Cash Book</span></div>
   <button onclick="openCfg()">&#9881; Settings</button>
+  <button onclick="doLogout()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:11px;margin-left:6px">Sign Out</button>
 </div>
 <div class="tabs">
   <div class="tab on" onclick="tab('quote')">&#128203; Quote</div>
   <div class="tab" onclick="tab('qhist')">&#128196; Quotes Sent</div>
   <div class="tab" onclick="tab('invoice')">&#128196; Invoice</div>
   <div class="tab" onclick="tab('istatus')">&#128276; Invoice Status</div>
+  <div class="tab" onclick="tab('contacts')">&#128101; Contacts</div>
   <div class="tab" onclick="tab('cash')">&#128202; Cash Book</div>
 </div>
 <div class="panel on" id="p-quote">
@@ -120,7 +177,11 @@ tbody td{padding:7px 10px;vertical-align:middle}
     <div>
       <div class="sec"><h3>Quote Information</h3>
         <div class="r2">
-          <div class="f"><label>Quote Number</label><input id="q-num" value="#QT-001"></div>
+          <div class="f"><label>Quote Number</label>
+          <div style="display:flex;align-items:center;border:1px solid var(--bd);border-radius:6px;overflow:hidden">
+            <span style="background:#f5f5f5;padding:6px 8px;font-size:13px;color:#666;border-right:1px solid var(--bd)">#</span>
+            <input id="q-num" value='QT-001' style="border:none;border-radius:0;flex:1;padding:6px 8px;font-size:13px" placeholder='QT-001'>
+          </div></div>
           <div class="f"><label>Date</label><input id="q-date" type="date"></div>
         </div>
         <div class="f"><label>PO# <span class="opt">optional</span></label><input id="q-po" placeholder="e.g. PO-45678"></div>
@@ -129,12 +190,28 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <div class="f"><label>Name / Company</label><input id="q-cn" placeholder="e.g. Sunshine Events Ltd."></div>
         <div class="f"><label>Address</label><input id="q-ca" placeholder="e.g. 100 Festival Blvd"></div>
         <div class="f"><label>City</label><input id="q-city" placeholder="e.g. Burlington ON"></div>
-        <div class="f"><label>Contact (Att)</label><input id="q-catt" placeholder="e.g. Att: Jessica Brown"></div>
+        <div class="f"><label>Contact</label>
+          <div style="display:flex;align-items:center;border:1px solid var(--bd);border-radius:6px;overflow:hidden">
+            <span style="background:#f5f5f5;padding:6px 8px;font-size:13px;color:#666;border-right:1px solid var(--bd)">Att.</span>
+            <input id="q-catt" style="border:none;border-radius:0;flex:1;padding:6px 8px;font-size:13px" placeholder="Jessica Brown">
+          </div></div>
+          <div class="f"><label>Contact Email</label><input id="q-cemail" type="email" placeholder="jessica@company.com"></div>
       </div>
       <div class="sec"><h3>Event (For)</h3>
-        <div class="f"><label>Service</label><input id="q-es" placeholder="e.g. Ice Cream Service"></div>
-        <div class="f"><label>Date(s)</label><input id="q-ed" placeholder="e.g. July 4th"></div>
+        <div class="f"><label>Service</label><select id="q-es">
+          <option value="">-- Select service --</option>
+          <option value="Ice Cream Sundae">Ice Cream Sundae</option>
+          <option value="Ice Cream Only">Ice Cream Only</option>
+          <option value="Ice Cream Sundaes &amp; Ice Cream Only">Ice Cream Sundaes &amp; Ice Cream Only</option>
+        </select></div>
+        <div class="f"><label>Date(s)</label><input id="q-ed" type="date"></div>
         <div class="f"><label>Duration</label><input id="q-edur" placeholder="e.g. 90 min Service Time"></div>
+      <div class="f"><label>NET Days</label><select id="q-net">
+          <option value="NET 15">NET 15</option>
+          <option value="NET 30" selected>NET 30</option>
+          <option value="NET 45">NET 45</option>
+          <option value="NET 60">NET 60</option>
+        </select></div>
       </div>
       <div class="sec"><h3>Shifts <span class="opt">optional</span></h3>
         <div id="q-shifts"></div>
@@ -167,6 +244,9 @@ tbody td{padding:7px 10px;vertical-align:middle}
   </div>
 </div>
 <div class="panel" id="p-qhist">
+  <div id="qh-debug" style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px;margin-bottom:12px;font-size:12px;display:none">
+    Debug: <span id="qh-debug-msg"></span>
+  </div>
   <div class="tbar" style="justify-content:space-between">
     <h2 style="font-size:15px;font-weight:700">Quotes Sent</h2>
     <select id="qh-f" onchange="renderQH()" style="padding:6px 10px;border:1px solid var(--bd);border-radius:5px;font-size:13px">
@@ -178,6 +258,11 @@ tbody td{padding:7px 10px;vertical-align:middle}
     <table><thead><tr><th>Quote #</th><th>Company</th><th>Contact</th><th>Date Sent</th><th>Status</th><th></th></tr></thead>
     <tbody id="qh-body"></tbody></table>
     <div id="qh-empty" class="empty">No quotes yet. Generate a Quote PDF to save it here.</div>
+    <div style="padding:8px;border-top:1px solid #eee">
+      <button onclick="testConvert()" style="padding:4px 10px;background:#333;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer">
+        🔧 Test: Direct call q2iH
+      </button>
+    </div>
   </div>
 </div>
 <div class="panel" id="p-invoice">
@@ -185,7 +270,11 @@ tbody td{padding:7px 10px;vertical-align:middle}
     <div>
       <div class="sec"><h3>Invoice Information</h3>
         <div class="r2">
-          <div class="f"><label>Invoice Number</label><input id="i-num" value="#INV-001"></div>
+          <div class="f"><label>Invoice Number</label>
+          <div style="display:flex;align-items:center;border:1px solid var(--bd);border-radius:6px;overflow:hidden">
+            <span style="background:#f5f5f5;padding:6px 8px;font-size:13px;color:#666;border-right:1px solid var(--bd)">#</span>
+            <input id="i-num" value='INV-001' style="border:none;border-radius:0;flex:1;padding:6px 8px;font-size:13px" placeholder='INV-001'>
+          </div></div>
           <div class="f"><label>Date</label><input id="i-date" type="date"></div>
         </div>
         <div class="f"><label>PO# <span class="opt">optional</span></label><input id="i-po" placeholder="e.g. PO-45678"></div>
@@ -194,12 +283,28 @@ tbody td{padding:7px 10px;vertical-align:middle}
         <div class="f"><label>Name / Company</label><input id="i-cn" placeholder="e.g. Sunshine Events Ltd."></div>
         <div class="f"><label>Address</label><input id="i-ca" placeholder="e.g. 100 Festival Blvd"></div>
         <div class="f"><label>City</label><input id="i-city" placeholder="e.g. Burlington ON"></div>
-        <div class="f"><label>Contact (Att)</label><input id="i-catt" placeholder="e.g. Att: Jessica Brown"></div>
+        <div class="f"><label>Contact</label>
+          <div style="display:flex;align-items:center;border:1px solid var(--bd);border-radius:6px;overflow:hidden">
+            <span style="background:#f5f5f5;padding:6px 8px;font-size:13px;color:#666;border-right:1px solid var(--bd)">Att.</span>
+            <input id="i-catt" style="border:none;border-radius:0;flex:1;padding:6px 8px;font-size:13px" placeholder="Jessica Brown">
+          </div></div>
+          <div class="f"><label>Contact Email</label><input id="i-cemail" type="email" placeholder="jessica@company.com"></div>
       </div>
       <div class="sec"><h3>Event (For)</h3>
-        <div class="f"><label>Service</label><input id="i-es" placeholder="e.g. Ice Cream Service"></div>
-        <div class="f"><label>Date(s)</label><input id="i-ed" placeholder="e.g. July 4th"></div>
+        <div class="f"><label>Service</label><select id="i-es">
+          <option value="">-- Select service --</option>
+          <option value="Ice Cream Sundae">Ice Cream Sundae</option>
+          <option value="Ice Cream Only">Ice Cream Only</option>
+          <option value="Ice Cream Sundaes &amp; Ice Cream Only">Ice Cream Sundaes &amp; Ice Cream Only</option>
+        </select></div>
+        <div class="f"><label>Date(s)</label><input id="i-ed" type="date"></div>
         <div class="f"><label>Duration</label><input id="i-edur" placeholder="e.g. 90 min Service Time"></div>
+      <div class="f"><label>NET Days</label><select id="i-net">
+          <option value="NET 15">NET 15</option>
+          <option value="NET 30" selected>NET 30</option>
+          <option value="NET 45">NET 45</option>
+          <option value="NET 60">NET 60</option>
+        </select></div>
       </div>
       <div class="sec"><h3>Shifts <span class="opt">optional</span></h3>
         <div id="i-shifts"></div>
@@ -249,6 +354,18 @@ tbody td{padding:7px 10px;vertical-align:middle}
     <div id="is-empty" class="empty">No invoices yet. Generate an Invoice PDF to track it here.</div>
   </div>
 </div>
+<!-- CONTACTS -->
+<div class="panel" id="p-contacts">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;max-width:1100px">
+    <h2 style="font-size:15px;font-weight:700">Contact List</h2>
+    <button onclick="exportContacts()" style="padding:6px 14px;background:var(--red);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px">&#8659; Export Contacts CSV</button>
+  </div>
+  <div class="twrap">
+    <table><thead><tr><th>Company</th><th>Contact</th><th>Email</th><th>Source</th><th>Date</th></tr></thead>
+    <tbody id="contacts-body"></tbody></table>
+    <div id="contacts-empty" class="empty">No contacts yet. Contacts are collected from Quote and Invoice forms.</div>
+  </div>
+</div>
 <div class="panel" id="p-cash">
   <div class="stats">
     <div class="sc"><div class="sl">Total Billed</div><div class="sv" id="st-total">$ 0</div></div>
@@ -272,31 +389,165 @@ tbody td{padding:7px 10px;vertical-align:middle}
 </div>
 </div>
 <script>
+// Set logos + check local session
 (function(){
   if(typeof LOGO_IMG!=='undefined'){
     document.getElementById('ll').src=LOGO_IMG;
     document.getElementById('hl').src=LOGO_IMG;
   }
-  var ok=false;try{ok=sessionStorage.getItem('cc')==='1';}catch(e){}
-  if(ok){document.getElementById('login').style.display='none';document.getElementById('app').style.display='block';initApp();}
+  // If locally authenticated (no Firebase), restore session
+  try{
+    if(sessionStorage.getItem('cc_local')==='1'){showApp();}
+  }catch(ex){}
 })();
+
+function showApp(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  if(typeof initApp==='function')initApp();
+}
 window.doLogin=function(){
-  var v=document.getElementById('login-pwd').value;
-  if(v==='crazy@admin'){
-    try{sessionStorage.setItem('cc','1');}catch(e){}
-    document.getElementById('login').style.display='none';
-    document.getElementById('app').style.display='block';
-    initApp();
-  }else{
-    var e=document.getElementById('login-err');e.style.display='block';
-    document.getElementById('login-pwd').value='';
+  var email=document.getElementById('login-email').value.trim();
+  var pwd=document.getElementById('login-pwd').value;
+  if(!email||!pwd){
+    var e=document.getElementById('login-err');e.style.display='block';e.textContent='Please enter email and password.';
+    setTimeout(function(){e.style.display='none';},3000);return;
+  }
+  document.getElementById('login-btn').textContent='Signing in...';
+  document.getElementById('login-btn').disabled=true;
+  function fail(){
+    document.getElementById('login-btn').textContent='Sign In';
+    document.getElementById('login-btn').disabled=false;
+    var e=document.getElementById('login-err');
+    e.style.display='block';e.textContent='Incorrect email or password.';
     setTimeout(function(){e.style.display='none';},3000);
   }
+  if(window._fb&&window._fbReady){
+    window._fb.login(email,pwd).then(function(ok){if(!ok)fail();});
+  } else {
+    // Local fallback (no Firebase)
+    if(pwd==='crazy@admin'){
+      try{sessionStorage.setItem('cc_local','1');}catch(ex){}
+      showApp();
+    } else {fail();}
+    document.getElementById('login-btn').textContent='Sign In';
+    document.getElementById('login-btn').disabled=false;
+  }
+};
+function testConvert(){
+  if(quotes.length===0){
+    var dbg=document.getElementById('qh-debug');
+    var msg=document.getElementById('qh-debug-msg');
+    dbg.style.display='block';
+    msg.textContent='No quotes in memory! quotes.length=0';
+    return;
+  }
+  q2iH(quotes[0].inv_num);
+}
+
+var contacts=JSON.parse(localStorage.getItem('cc_contacts')||'[]');
+function saveContact(d,source){
+  if(!d.client_email&&!d.client_name) return;
+  var exists=contacts.findIndex(function(c){return c.email===d.client_email&&c.company===d.client_name;});
+  if(exists>=0) return; // no duplicates
+  var entry={company:d.client_name||'',contact:d.client_att||'',email:d.client_email||'',source:source,date:new Date().toISOString().slice(0,10)};
+  contacts.unshift(entry);
+  localStorage.setItem('cc_contacts',JSON.stringify(contacts));
+  if(window._fb&&d.client_email) window._fb.save('contacts',(d.client_email||d.client_name).replace(/[^a-zA-Z0-9]/g,'_'),entry);
+}
+function renderContacts(){
+  var rows=contacts;
+  document.getElementById('contacts-empty').style.display=rows.length?'none':'block';
+  document.getElementById('contacts-body').innerHTML=rows.map(function(c){
+    var emailLink=c.email?'<a href="mailto:'+c.email+'" style="color:var(--red)">'+c.email+'</a>':'-';
+    return '<tr><td>'+(c.company||'-')+'</td><td>'+(c.contact||'-')+'</td><td>'+emailLink+'</td><td style="font-size:11px;color:#888">'+(c.source||'-')+'</td><td style="font-size:11px;color:#888">'+(c.date||'-')+'</td></tr>';
+  }).join('');
+}
+window.exportContacts=function(){
+  var h=['Company','Contact','Email','Source','Date'];
+  var rows=contacts.map(function(c){return[c.company,c.contact,c.email,c.source,c.date];});
+  var csv=[h].concat(rows).map(function(r){return r.map(function(v){return'"'+(v||'')+'"';}).join(',');}).join('\n');
+  var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='contacts.csv';a.click();
+};
+
+
+window.editInvoice=function(num){
+  var entry=iStatus.find(function(e){return e.inv_num===num;});
+  if(!entry)return;
+  var d=entry.data;
+  function sv(id,v){var el=document.getElementById(id);if(el)el.value=v||'';}
+  // Strip # prefix for input field
+  sv('i-num',(d.inv_num||'').replace(/^#+/,''));
+  sv('i-date',d.inv_date_raw);sv('i-po',d.po_number);
+  sv('i-cn',d.client_name);sv('i-ca',d.client_addr);
+  sv('i-city',d.client_city);
+  // Strip "Att. " prefix for input
+  sv('i-catt',(d.client_att||'').replace(/^Att\.?\s*/i,''));
+  sv('i-cemail',d.client_email);
+  sv('i-es',d.ev_service);sv('i-ed',d.ev_dates);
+  sv('i-edur',d.ev_dur);sv('i-nop',d.nop_min);
+  var netEl=document.getElementById('i-net');if(netEl&&d.ev_net)netEl.value=d.ev_net;
+  S['i'].items=JSON.parse(JSON.stringify(d.items||[]));
+  S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
+  renderItems('i');renderShifts('i');
+  tab('invoice');toast('Invoice loaded for editing. Generate PDF to update.');
+};
+window.delInvoice=function(num){
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML='<div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:380px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2)">'
+    +'<div style="font-size:40px;margin-bottom:12px">&#128465;</div>'
+    +'<h3 style="font-size:16px;margin-bottom:8px;color:#333">Delete Invoice</h3>'
+    +'<p style="font-size:13px;color:#666;margin-bottom:20px">Are you sure you want to delete <strong>'+num+'</strong>? This action cannot be undone.</p>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:7px;cursor:pointer;font-size:13px">Cancel</button>'
+    +'<button onclick="confirmDelInvoice(''+num+'');this.closest('div[style*=fixed]').remove()" style="flex:1;padding:10px;background:#ef4444;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700">Delete</button>'
+    +'</div></div>';
+  document.body.appendChild(overlay);
+};
+window.confirmDelInvoice=function(num){
+  iStatus=iStatus.filter(function(e){return e.inv_num!==num;});
+  localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+  var key=num.replace(/[^a-zA-Z0-9]/g,'_');
+  if(window._fb)window._fb.del('istatus',key);
+  renderIS();toast('Invoice deleted.');
+};
+
+window.doLogout=function(){
+  try{sessionStorage.removeItem('cc_local');}catch(ex){}
+  if(window._fb&&window._fbReady) window._fb.logout();
+  else location.reload();
 };
 function initApp(){
   var t=new Date().toISOString().slice(0,10);
   ['q-date','i-date'].forEach(function(id){document.getElementById(id).value=t;});
-  renderItems('q');renderItems('i');renderQH();renderIS();renderCB();updateStats();
+  renderItems('q');renderItems('i');
+  // Load data from Firebase if available
+  if(window._fb){
+    Promise.all([
+      window._fb.load('ledger'),
+      window._fb.load('quotes'),
+      window._fb.load('istatus')
+    ]).then(function(results){
+      if(results[0]&&results[0].length>0){
+        ledger=results[0];
+        localStorage.setItem('cc_ledger',JSON.stringify(ledger));
+      }
+      if(results[1]&&results[1].length>0){
+        quotes=results[1];
+        localStorage.setItem('cc_quotes',JSON.stringify(quotes));
+      }
+      if(results[2]&&results[2].length>0){
+        iStatus=results[2];
+        localStorage.setItem('cc_istatus',JSON.stringify(iStatus));
+      }
+      renderQH();renderIS();renderCB();updateStats();
+    }).catch(function(){
+      renderQH();renderIS();renderCB();updateStats();
+    });
+  } else {
+    renderQH();renderIS();renderCB();updateStats();
+  }
 }
 var S={
   i:{items:[{desc:'Travel fee',ppp:'',qty:'',amt:170}],shifts:[]},
@@ -307,13 +558,14 @@ var quotes=JSON.parse(localStorage.getItem('cc_quotes')||'[]');
 var iStatus=JSON.parse(localStorage.getItem('cc_istatus')||'[]');
 var wh=localStorage.getItem('cc_wh')||'';
 window.tab=function(name){
-  var panels=['quote','qhist','invoice','istatus','cash'];
+  var panels=['quote','qhist','invoice','istatus','contacts','cash'];
   document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',panels[i]===name);});
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});
   document.getElementById('p-'+name).classList.add('on');
   if(name==='cash'){renderCB();updateStats();}
   if(name==='qhist'){renderQH();}
   if(name==='istatus'){renderIS();}
+  if(name==='contacts'){renderContacts();}
 };
 window.openCfg=function(){document.getElementById('cfg-url').value=wh;document.getElementById('cfg-modal').classList.add('on');};
 window.closeCfg=function(){document.getElementById('cfg-modal').classList.remove('on');};
@@ -361,11 +613,13 @@ function collect(p){
   var dv=document.getElementById(p+'-date').value;
   var ds=dv?new Date(dv+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
   var sub=S[p].items.reduce(function(s,it){return s+getAmt(it);},0);
-  return{inv_num:document.getElementById(p+'-num').value,inv_date:ds,inv_date_raw:dv,
+  return{inv_num:'#'+document.getElementById(p+'-num').value.replace(/^#+/,''),inv_date:ds,inv_date_raw:dv,
     po_number:document.getElementById(p+'-po').value,client_name:document.getElementById(p+'-cn').value,
     client_addr:document.getElementById(p+'-ca').value,client_city:document.getElementById(p==='q'?'q-city':'i-city').value,
-    client_att:document.getElementById(p+'-catt').value,ev_service:document.getElementById(p+'-es').value,
+    client_att:'Att. '+document.getElementById(p+'-catt').value,
+    client_email:(document.getElementById(p+'-cemail')||{value:''}).value,ev_service:document.getElementById(p+'-es').value,
     ev_dates:document.getElementById(p+'-ed').value,ev_dur:document.getElementById(p+'-edur').value,
+    ev_net:(document.getElementById(p+'-net')||{value:'NET 30'}).value,
     shifts:JSON.parse(JSON.stringify(S[p].shifts)),nop_min:document.getElementById(p+'-nop').value,
     send_date:isQ?'':new Date().toISOString().slice(0,10),
     due_date:'',
@@ -377,6 +631,7 @@ window.genPDF=function(p,isQuote){
   var d=collect(p);
   makePDF(d,isQuote,isQuote?QT_TMPL:INV_TMPL);
   if(isQuote)saveQEntry(d);else saveIEntry(d);
+  saveContact(d,isQuote?'Quote':'Invoice');
   return d;
 };
 function makePDF(d,isQuote,imgData){
@@ -411,14 +666,23 @@ function makePDF(d,isQuote,imgData){
   var tT=Math.max(billEnd,forEnd)+24,tW=R-L,cA=40,cP=tW*0.38,cD=tW-cP-cA,pX=L+cD+cP/2,rH=18,hH=20;
   doc.setDrawColor('#333');doc.setLineWidth(1.5);doc.rect(L,tT-hH,tW,hH,'S');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor('#333');
-  doc.text('DESCRIPTION',L+6,tT-7);doc.text('Value per person*',pX,tT-7,{align:'center'});doc.text('AMOUNT',R-6,tT-7,{align:'right'});
+  var cAmt=58,cQty=34,cPpp=48,cDescW=tW-cPpp-cQty-cAmt;
+  var pX2=L+cDescW+cPpp/2,qX2=L+cDescW+cPpp+cQty/2;
+  doc.text('DESCRIPTION',L+6,tT-7);
+  doc.text('$/p',pX2,tT-7,{align:'center'});
+  doc.text('Qty',qX2,tT-7,{align:'center'});
+  doc.text('AMOUNT',R-6,tT-7,{align:'right'});
+  doc.setDrawColor('#333');doc.setLineWidth(0.5);
+  doc.line(L+cDescW,tT-8,L+cDescW,tT);
+  doc.line(L+cDescW+cPpp,tT-8,L+cDescW+cPpp,tT);
+  doc.line(L+cDescW+cPpp+cQty,tT-8,L+cDescW+cPpp+cQty,tT);
   var sub=0;
   d.items.forEach(function(it,idx){
     var amt=getAmt(it);sub+=amt;var ry=tT+idx*rH;
     if(idx%2===0){doc.setFillColor(254,240,243);doc.rect(L,ry,tW,rH,'F');}
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor('#333');
-    doc.text((it.desc||'').substring(0,75),L+6,ry+12);
-    if(it.ppp!==''&&it.qty!=='')doc.text('$ '+parseFloat(it.ppp).toFixed(2),pX,ry+12,{align:'center'});
+    doc.text((it.desc||'').substring(0,50),L+6,ry+12);
+    if(it.ppp!==''&&it.qty!==''){doc.text('$ '+parseFloat(it.ppp).toFixed(2),pX2,ry+12,{align:'center'});doc.text(String(parseInt(it.qty)||it.qty),qX2,ry+12,{align:'center'});}
     doc.text('$ '+amt.toFixed(2),R-6,ry+12,{align:'right'});
     doc.setDrawColor('#E0E0E0');doc.setLineWidth(0.2);doc.line(L,ry,R,ry);
   });
@@ -446,7 +710,7 @@ function makePDF(d,isQuote,imgData){
   [[false,'#C0153A','*If you are paying with credit card, there will be a 3% additional fee added to the balance.'],
    [true,'#333','Make all checks payable to Crazy Cravings or E-Transfer to info@crazycravings.ca'],
    [false,'#333',isQuote?'If you have any questions concerning this quote, contact Jeff Coates, (905) 906-8657':'If you have any questions concerning this invoice, contact Jeff Coates, (905) 906-8657']
-  ].concat(isQuote?[]:[[true,'#C0153A','Invoice are NET 30 DAYS - Late invoices are subject to 3% fee per month']])
+  ].concat(isQuote?[]:[[true,'#C0153A',(d.ev_net||'NET 30')+' DAYS - Late invoices are subject to 3% fee per month']])
   .forEach(function(r){doc.setFont('helvetica',r[0]?'bold':'normal');doc.setFontSize(7.5);doc.setTextColor(r[1]);doc.text(r[2],L,fy);fy+=13;});
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor('#333');
   doc.text('Thank you for your business!',PW/2,fy+18,{align:'center'});
@@ -459,63 +723,76 @@ function saveQEntry(d){
   if(i>=0)quotes[i]=e;else quotes.unshift(e);
   localStorage.setItem('cc_quotes',JSON.stringify(quotes));toast('Quote saved to history!');
 }
-window.updQS=function(num,s){var e=quotes.find(function(x){return x.inv_num===num;});if(e){e.status=s;localStorage.setItem('cc_quotes',JSON.stringify(quotes));renderQH();}};
+window.updQS=function(num,s){var e=quotes.find(function(x){return x.inv_num===num;});if(e){e.status=s;localStorage.setItem('cc_quotes',JSON.stringify(quotes));if(window._fb)window._fb.save('quotes',e.inv_num.replace(/[^a-zA-Z0-9]/g,'_'),e);renderQH();}};
 window.q2iH=function(num){
-  var entry=quotes.find(function(e){return e.inv_num===num;});if(!entry)return;var d=entry.data;
-  document.getElementById('i-num').value=(d.inv_num||'').replace(/QT-?/i,'INV-');
-  document.getElementById('i-date').value=d.inv_date_raw||'';document.getElementById('i-po').value=d.po_number||'';
-  document.getElementById('i-cn').value=d.client_name||'';document.getElementById('i-ca').value=d.client_addr||'';
-  document.getElementById('i-city').value=d.client_city||'';document.getElementById('i-catt').value=d.client_att||'';
-  document.getElementById('i-es').value=d.ev_service||'';document.getElementById('i-ed').value=d.ev_dates||'';
-  document.getElementById('i-edur').value=d.ev_dur||'';document.getElementById('i-nop').value=d.nop_min||'';
-  document.getElementById('i-send').value=new Date().toISOString().slice(0,10);
-  S['i'].items=JSON.parse(JSON.stringify(d.items||[]));S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
-  renderItems('i');renderShifts('i');tab('invoice');toast('Quote converted to Invoice!');
+  var entry=quotes.find(function(e){return e.inv_num===num;});
+  if(!entry){alert('Quote not found: '+num);return;}
+  var d=entry.data;
+  function setVal(id,val){var el=document.getElementById(id);if(el)el.value=val||'';}
+  setVal('i-num',(d.inv_num||'').replace(/QT-?/i,'INV-'));
+  setVal('i-date',d.inv_date_raw);
+  setVal('i-po',d.po_number);
+  setVal('i-cn',d.client_name);
+  setVal('i-ca',d.client_addr);
+  setVal('i-city',d.client_city);
+  setVal('i-catt',d.client_att);
+  setVal('i-es',d.ev_service);
+  setVal('i-ed',d.ev_dates);
+  setVal('i-edur',d.ev_dur);
+  var netEl=document.getElementById('i-net');if(netEl&&d.ev_net)netEl.value=d.ev_net;
+  setVal('i-nop',d.nop_min);
+  S['i'].items=JSON.parse(JSON.stringify(d.items||[]));
+  S['i'].shifts=JSON.parse(JSON.stringify(d.shifts||[]));
+  renderItems('i');
+  renderShifts('i');
+  tab('invoice');
+  toast('Quote converted to Invoice!');
 };
 window.q2i=function(){
   var d=collect('q');
-  document.getElementById('i-num').value=d.inv_num.replace(/QT-?/i,'INV-');
-  document.getElementById('i-date').value=d.inv_date_raw;document.getElementById('i-po').value=d.po_number;
-  document.getElementById('i-cn').value=d.client_name;document.getElementById('i-ca').value=d.client_addr;
-  document.getElementById('i-city').value=d.client_city;document.getElementById('i-catt').value=d.client_att;
-  document.getElementById('i-es').value=d.ev_service;document.getElementById('i-ed').value=d.ev_dates;
-  document.getElementById('i-edur').value=d.ev_dur;document.getElementById('i-nop').value=d.nop_min;
-  S['i'].items=JSON.parse(JSON.stringify(S['q'].items));S['i'].shifts=JSON.parse(JSON.stringify(S['q'].shifts));
+  function sv(id,v){var el=document.getElementById(id);if(el)el.value=v||'';}
+  sv('i-num',d.inv_num.replace(/QT-?/i,'INV-'));
+  sv('i-date',d.inv_date_raw);sv('i-po',d.po_number);
+  sv('i-cn',d.client_name);sv('i-ca',d.client_addr);
+  sv('i-city',d.client_city);sv('i-catt',d.client_att);
+  sv('i-es',d.ev_service);sv('i-ed',d.ev_dates);
+  sv('i-edur',d.ev_dur);sv('i-nop',d.nop_min);
+  var iNetEl=document.getElementById('i-net');if(iNetEl&&d.ev_net)iNetEl.value=d.ev_net;
+  S['i'].items=JSON.parse(JSON.stringify(S['q'].items));
+  S['i'].shifts=JSON.parse(JSON.stringify(S['q'].shifts));
   renderItems('i');renderShifts('i');tab('invoice');toast('Quote converted to Invoice!');
 };
 function renderQH(){
   var f=document.getElementById('qh-f').value;
   var filt=quotes.filter(function(e){return !f||e.status===f;});
   var tbody=document.getElementById('qh-body');
-  var empty=document.getElementById('qh-empty');
   tbody.innerHTML='';
-  empty.style.display=filt.length?'none':'block';
+  document.getElementById('qh-empty').style.display=filt.length?'none':'block';
   var sl={sent:'Sent',approved:'Approved',declined:'Declined',no_response:'No Response'};
   var allOpts=['sent','approved','declined','no_response'];
-  for(var i=0;i<filt.length;i++){
-    (function(entry){
-      var tr=document.createElement('tr');
-      var t0=document.createElement('td');t0.innerHTML='<strong>'+(entry.inv_num||'-')+'</strong>';
-      var t1=document.createElement('td');t1.textContent=entry.client_name||'-';
-      var t2=document.createElement('td');t2.textContent=entry.client_att||'-';t2.style.cssText='color:#888;font-size:11px';
-      var t3=document.createElement('td');t3.textContent=entry.send_date||'-';
-      var t4=document.createElement('td');
-      var sel=document.createElement('select');sel.className='ss';
-      allOpts.forEach(function(s){var o=document.createElement('option');o.value=s;o.textContent=sl[s];if(entry.status===s)o.selected=true;sel.appendChild(o);});
-      sel.addEventListener('change',function(){updQS(entry.inv_num,this.value);});
-      t4.appendChild(sel);
-      var t5=document.createElement('td');
-      if(entry.status==='approved'){
-        var btn=document.createElement('button');
-        btn.className='cvt';
-        btn.textContent='→ Convert to Invoice';
-        btn.addEventListener('click',function(){q2iH(entry.inv_num);});
-        t5.appendChild(btn);
-      }
-      tr.appendChild(t0);tr.appendChild(t1);tr.appendChild(t2);tr.appendChild(t3);tr.appendChild(t4);tr.appendChild(t5);
-      tbody.appendChild(tr);
-    })(filt[i]);
-  }
+  window._qhData=filt;
+  filt.forEach(function(entry,idx){
+    var tr=document.createElement('tr');
+    var t0=document.createElement('td');t0.innerHTML='<strong>'+(entry.inv_num||'-')+'</strong>';
+    var t1=document.createElement('td');t1.textContent=entry.client_name||'-';
+    var t2=document.createElement('td');t2.textContent=entry.client_att||'-';t2.style.color='#888';t2.style.fontSize='11px';
+    var t3=document.createElement('td');t3.textContent=entry.send_date||'-';
+    var t4=document.createElement('td');
+    var sel=document.createElement('select');sel.className='ss';sel.setAttribute('data-idx',idx);
+    allOpts.forEach(function(s){var o=document.createElement('option');o.value=s;o.textContent=sl[s];if(entry.status===s)o.selected=true;sel.appendChild(o);});
+    sel.onchange=function(){var i=parseInt(this.getAttribute('data-idx'));updQS(window._qhData[i].inv_num,this.value);};
+    t4.appendChild(sel);
+    var t5=document.createElement('td');
+    if(entry.status==='approved'){
+      var btn=document.createElement('button');
+      btn.className='cvt';btn.textContent='→ Convert to Invoice';
+      btn.setAttribute('data-idx',idx);
+      btn.onclick=function(){var i=parseInt(this.getAttribute('data-idx'));q2iH(window._qhData[i].inv_num);};
+      t5.appendChild(btn);
+    }
+    tr.appendChild(t0);tr.appendChild(t1);tr.appendChild(t2);tr.appendChild(t3);tr.appendChild(t4);tr.appendChild(t5);
+    tbody.appendChild(tr);
+  });
 }
 
 function saveIEntry(d){
@@ -551,6 +828,7 @@ window.sendToCB=function(num){
   var i=ledger.findIndex(function(x){return x.inv_num===d.inv_num;});
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
+  if(window._fb)window._fb.save('ledger',d.inv_num.replace(/[^a-zA-Z0-9]/g,'_'),d);
   sendWH(d);updateStats();toast('Invoice sent to Cash Book!');tab('cash');
 };
 window.genLate=function(num){
@@ -564,8 +842,7 @@ window.genLate=function(num){
   document.getElementById('i-ca').value=d.client_addr||'';document.getElementById('i-city').value=d.client_city||'';
   document.getElementById('i-catt').value=d.client_att||'';document.getElementById('i-es').value=d.ev_service||'';
   document.getElementById('i-ed').value=d.ev_dates||'';document.getElementById('i-edur').value=d.ev_dur||'';
-  document.getElementById('i-nop').value=d.nop_min||'';document.getElementById('i-send').value=new Date().toISOString().slice(0,10);
-  S['i'].items=d.items;S['i'].shifts=d.shifts||[];renderItems('i');renderShifts('i');
+  document.getElementById('i-nop').value=d.nop_min||'';S['i'].items=d.items;S['i'].shifts=d.shifts||[];renderItems('i');renderShifts('i');
   tab('invoice');toast('Late invoice (+3%) ready! Review and generate PDF.');
 };
 function daysOver(due){
@@ -583,17 +860,53 @@ function renderIS(){
     return e.status===f;
   });
   document.getElementById('is-empty').style.display=filt.length?'none':'block';
-  document.getElementById('is-body').innerHTML=filt.map(function(e){
+  var tbody=document.getElementById('is-body');
+  tbody.innerHTML='';
+  filt.forEach(function(e,idx){
     var days=daysOver(e.due_date),paid=e.status==='paid',ov=!paid&&days>0;
     var dotCls=paid?'g':ov?'r':'y';
     var lbl=paid?'<span style="color:#1a8a4a">Paid</span>':ov?'<span style="color:#ef4444">Overdue ('+days+'d)</span>':'<span style="color:#f59e0b">Unpaid</span>';
-    var sel='<select class="ss" onchange="updIS(\''+e.inv_num+'\',this.value)">'
-      +'<option value="unpaid"'+(e.status==='unpaid'?' selected':'')+'>Unpaid</option>'
-      +'<option value="paid"'+(e.status==='paid'?' selected':'')+'>Paid</option>'
-      +'</select>';
     var pm2={card:'Credit Card (+3%)',cash:'Cash',cheque:'Cheque',etransfer:'E-Transfer',eft:'EFT'};
-    var payOpts='<option value="">-- Select --</option>'
-      +['card','cash','cheque','etransfer','eft'].map(function(v){return '<option value="'+v+'"'+(e.pay_method===v?' selected':'')+'>'+pm2[v]+'</option>';}).join('');
+    var payOpts='<option value="">-- Select --</option>'+['card','cash','cheque','etransfer','eft'].map(function(v){return '<option value="'+v+'"'+(e.pay_method===v?' selected':'')+'>'+pm2[v]+'</option>';}).join('');
+    var payCell=paid?'<select class="ss" onchange="updISPay(''+e.inv_num+'',this.value)">'+payOpts+'</select>':'<span style="color:#ccc;font-size:11px">--</span>';
+    var displayTotal=(paid&&e.pay_method==='card'&&e.cc_total)?e.cc_total:(e.total||0);
+    // Status select
+    var selEl=document.createElement('select');selEl.className='ss';
+    [['unpaid','Unpaid'],['paid','Paid']].forEach(function(opt){var o=document.createElement('option');o.value=opt[0];o.textContent=opt[1];if(e.status===opt[0])o.selected=true;selEl.appendChild(o);});
+    selEl.addEventListener('change',function(){updIS(e.inv_num,this.value);});
+    // Action buttons
+    var actionDiv=document.createElement('div');actionDiv.style.cssText='display:flex;gap:4px;align-items:center;flex-wrap:wrap';
+    actionDiv.appendChild(selEl);
+    if(paid){
+      var cbBtn=document.createElement('button');cbBtn.className='cvt grn';cbBtn.innerHTML='&#8594; Send to Cash Book';
+      cbBtn.addEventListener('click',function(){sendToCB(e.inv_num);});actionDiv.appendChild(cbBtn);
+    } else if(ov){
+      var lateBtn=document.createElement('button');lateBtn.className='cvt ora';lateBtn.innerHTML='&#9888; Late Invoice +3%';
+      lateBtn.addEventListener('click',function(){genLate(e.inv_num);});actionDiv.appendChild(lateBtn);
+    }
+    var editBtn=document.createElement('button');editBtn.className='cvt';editBtn.style.background='#555';editBtn.innerHTML='&#9998; Edit';
+    editBtn.addEventListener('click',function(){editInvoice(e.inv_num);});actionDiv.appendChild(editBtn);
+    var delBtn=document.createElement('button');delBtn.className='cvt';delBtn.style.background='#ef4444';delBtn.innerHTML='&#128465; Delete';
+    delBtn.addEventListener('click',function(){delInvoice(e.inv_num);});actionDiv.appendChild(delBtn);
+    // Build row
+    var tr=document.createElement('tr');
+    var cells=[
+      '<span class="dot '+dotCls+'"></span>'+lbl,
+      '<strong>'+(e.inv_num||'-')+'</strong>',
+      e.client_name||'-',
+      '<span style="color:#888;font-size:11px">'+(e.client_att||'-')+'</span>',
+      e.send_date||'-',
+      e.due_date||'-',
+      '<input type="date" value="'+(e.received_date||'')+'" style="border:1px solid var(--bd);border-radius:4px;font-size:11px;padding:3px 5px;width:120px">',
+      '$ '+displayTotal.toFixed(2),
+      payCell
+    ];
+    cells.forEach(function(html){var td=document.createElement('td');td.innerHTML=html;tr.appendChild(td);});
+    var tdAction=document.createElement('td');tdAction.appendChild(actionDiv);tr.appendChild(tdAction);
+    // Add received_date listener
+    tr.querySelector('input[type=date]').addEventListener('change',function(){updISReceived(e.inv_num,this.value);});
+    tbody.appendChild(tr);
+  });;
     var payCell=paid
       ?'<select class="ss" onchange="updISPay(\''+e.inv_num+'\',this.value)">'+payOpts+'</select>'
       :'<span style="color:#ccc;font-size:11px">--</span>';
@@ -612,7 +925,10 @@ function renderIS(){
       +'<td><input type="date" value="'+(e.received_date||'')+'" style="border:1px solid var(--bd);border-radius:4px;font-size:11px;padding:3px 5px;width:120px" onchange="updISReceived(\''+e.inv_num+'\',this.value)"></td>'
       +'<td><strong>$ '+displayTotal.toFixed(2)+'</strong></td>'
       +'<td>'+payCell+'</td>'
-      +'<td style="display:flex;gap:6px;align-items:center">'+sel+' '+btn+'</td>'
+      +'<td style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">'+sel+' '+btn
+      +'<button class="cvt" style="background:#555" onclick="editInvoice(''+e.inv_num+'')">&#9998; Edit</button>'
+      +'<button class="cvt" style="background:#ef4444" onclick="delInvoice(''+e.inv_num+'')">&#128465; Delete</button>'
+      +'</td>'
       +'</tr>';
   }).join('');
 }
@@ -621,6 +937,7 @@ window.saveBook=function(){
   var i=ledger.findIndex(function(e){return e.inv_num===d.inv_num;});
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
+  if(window._fb)window._fb.save('ledger',d.inv_num.replace(/[^a-zA-Z0-9]/g,'_'),d);
   sendWH(d);renderCB();updateStats();toast('Saved to Cash Book!');tab('cash');
 };
 window.savePDF=function(){
@@ -628,10 +945,11 @@ window.savePDF=function(){
   var i=ledger.findIndex(function(e){return e.inv_num===d.inv_num;});
   if(i>=0)ledger[i]=d;else ledger.unshift(d);
   localStorage.setItem('cc_ledger',JSON.stringify(ledger));
+  if(window._fb)window._fb.save('ledger',d.inv_num.replace(/[^a-zA-Z0-9]/g,'_'),d);
   sendWH(d);renderCB();updateStats();toast('PDF generated and saved!');
 };
 window.updStatus=function(num,s){var e=ledger.find(function(x){return x.inv_num===num;});if(e){e.status=s;localStorage.setItem('cc_ledger',JSON.stringify(ledger));updateStats();sendWH(e);}};
-window.delEntry=function(num){if(!confirm('Remove this entry?'))return;ledger=ledger.filter(function(e){return e.inv_num!==num;});localStorage.setItem('cc_ledger',JSON.stringify(ledger));renderCB();updateStats();};
+window.delEntry=function(num){if(!confirm('Remove this entry?'))return;var delKey=num.replace(/[^a-zA-Z0-9]/g,'_');ledger=ledger.filter(function(e){return e.inv_num!==num;});localStorage.setItem('cc_ledger',JSON.stringify(ledger));if(window._fb)window._fb.del('ledger',delKey);renderCB();updateStats();};
 function renderCB(){
   var s=document.getElementById('cb-s').value.toLowerCase(),f=document.getElementById('cb-f').value;
   var filt=ledger.filter(function(e){return(!s||(e.inv_num||'').toLowerCase().includes(s)||(e.client_name||'').toLowerCase().includes(s))&&(!f||e.status===f);});
@@ -666,11 +984,15 @@ async function sendWH(d){if(!wh)return;try{await fetch(wh,{method:'POST',mode:'n
 window.syncSheets=async function(){if(!wh){openCfg();return;}for(var e of ledger)await sendWH(e);toast('Synced with Google Sheets!');};
 window.clr=function(p){
   if(!confirm('Clear all fields?'))return;
-  var ids=p==='i'?['i-num','i-po','i-cn','i-ca','i-city','i-catt','i-es','i-ed','i-edur','i-nop']:['q-num','q-po','q-cn','q-ca','q-city','q-catt','q-es','q-ed','q-edur','q-nop'];
+  var ids=p==='i'?['i-num','i-po','i-cn','i-ca','i-city','i-catt','i-es','i-ed','i-edur','i-nop']:['q-num','q-po','q-cn','q-ca','q-city','q-catt','q-cemail','q-ed','q-edur','q-nop'];
   ids.forEach(function(id){document.getElementById(id).value='';});
   document.getElementById(p+'-date').value=new Date().toISOString().slice(0,10);
   
-  S[p].items=[{desc:'Travel fee',ppp:'',qty:'',amt:170}];S[p].shifts=[];renderItems(p);renderShifts(p);
+  S[p].items=[{desc:'Travel fee',ppp:'',qty:'',amt:170}];S[p].shifts=[];
+  var esEl=document.getElementById(p+'-es');if(esEl)esEl.value='';
+  var numEl=document.getElementById(p+'-num');if(numEl)numEl.value=(p==='q'?'QT':'INV')+'-001';
+  var netEl=document.getElementById(p+'-net');if(netEl)netEl.value='NET 30';
+  renderItems(p);renderShifts(p);
 };
 </script>
 </body>
